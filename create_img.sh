@@ -1,13 +1,16 @@
 #!/bin/sh
 
 #declare variables
-IMG_FILE="vtr100.img"
+IMG_FILE="firmware.img"
 IMG_SIZE=400	#MB
-PASSWORD="Y9Jx1psL"
+PASSWORD="111"
 
 #function to copy files with show progress
+#$1 - source
+#$2 - dest
 cpStat () {
-	tar c "$1" | pv -s ${IMG_SIZE}M | tar x -C "$2"
+	SIZE=`du -sk $1 | awk '{ print $1 }'`
+	tar c "$1" | pv -s ${SIZE}K | tar x -C "$2"
 }
 
 echo "Creating img file..."
@@ -51,12 +54,31 @@ mkfs.ext4 /dev/mapper/rootfs
 
 echo "Copying files to rootfs partition..."
 mount /dev/mapper/rootfs /mnt/
-cpStat rootfs/ /mnt/
+cd rootfs/
+cpStat bin/ /mnt/
+cpStat dev/ /mnt/
+cpStat etc/ /mnt/
+cpStat home/ /mnt/
+cpStat lib/ /mnt/
+cpStat libexec/ /mnt/
+cpStat mnt/ /mnt/
+cpStat private/ /mnt/
+cpStat proc/ /mnt/
+cpStat root/ /mnt/
+cpStat sbin/ /mnt/
+cpStat share/ /mnt/
+cpStat ssl/ /mnt/
+cpStat sys/ /mnt/
+cpStat tmp/ /mnt/
+cpStat usr/ /mnt/
+cpStat var/ /mnt/
+cpStat linuxrc /mnt/
+cd ..
 umount /mnt/
 
 echo "Add crypt key to initramfs..."
 cat <<EOT | cryptsetup luksAddKey ${LOOP_PART_SYS} initramfs/etc/password
-$PASSwORD
+$PASSWORD
 EOT
 cryptsetup luksClose rootfs
 
@@ -66,6 +88,7 @@ mv uInitrd bootloader/
 rm initramfs.cpio
 rm initramfs.cpio.gz
 mount ${LOOP_PART_BOOT} /mnt/
+rm /mnt/uInitrd
 pv bootloader/uInitrd > /mnt/uInitrd
 umount /mnt/
 
